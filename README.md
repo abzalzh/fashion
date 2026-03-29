@@ -41,6 +41,32 @@ npm install
 npx expo start -c
 ```
 
+## Run AI Support Server (Optional)
+
+The AI chat feature requires a Python backend server. The server uses PyTorch models from the `AI/` folder for intelligent responses.
+
+**Prerequisites:** Python 3.8+ with pip
+
+```bash
+cd server
+pip install -r requirements.txt
+python ai_server.py
+```
+
+The server will start on `http://localhost:8000`.
+
+**For mobile device testing**, update the API URL in `mobile-native/src/customer/SupportTab.tsx`:
+```typescript
+const AI_API_URL = 'http://YOUR_COMPUTER_IP:8000'  // e.g., 'http://192.168.1.5:8000'
+```
+
+**API Endpoints:**
+- `POST /chat` - AI support chat with intent classification
+- `POST /fabric/analyze` - Fabric analysis (uses trained models)
+- `GET /health` - Server health check
+
+**Note:** If the AI server is not running, the Support tab will fall back to local response templates.
+
 ## Run (Android Studio / Kotlin)
 
 See `TempGuide.txt`. Open `android-native/` in Android Studio, set `SUPABASE_URL` + `SUPABASE_ANON_KEY` in `local.properties`, then Run.

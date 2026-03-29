@@ -12,6 +12,8 @@ interface Message {
   type: 'text' | 'system'
 }
 
+const AI_API_URL = 'http://localhost:8000'
+
 export function SupportTab() {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -33,17 +35,6 @@ export function SupportTab() {
   const [isTyping, setIsTyping] = useState(false)
   const scrollViewRef = useRef<ScrollView>(null)
 
-  const aiResponses = [
-    "Thank you for contacting AVISHU Support. Your order status can be checked in the 'Profile · Orders' section of the app.",
-    "For order modifications, please contact your local franchisee directly as they manage order acceptance and changes.",
-    "Delivery times vary by location and production schedule. Please check your order timeline for estimated readiness.",
-    "To track your order, navigate to 'Profile · Orders' where you'll see the current status and progress.",
-    "For returns and exchanges, please visit your local AVISHU franchisee with your order confirmation.",
-    "Our premium collection features structured designs with minimalist aesthetics. Explore the catalog to see current offerings.",
-    "Sizing information is available in each product's detailed view. If you need further assistance, our franchisees can help with measurements.",
-    "Payment is processed upon order confirmation. You'll receive a receipt via email once your order is accepted."
-  ]
-
   const preWrittenResponses = [
     "Order Status Inquiry",
     "Return Policy",
@@ -55,14 +46,40 @@ export function SupportTab() {
     "Custom Orders"
   ]
 
+  const fallbackResponses: Record<string, string> = {
+    "Order Status Inquiry": "Your order status can be viewed in the 'Profile · Orders' section. Orders move through Placed → In Production → Ready stages.",
+    "Return Policy": "Returns are handled by your local franchisee. Please visit them with your order confirmation within 14 days of receipt.",
+    "Sizing Help": "Our structured fit runs true to size. For precise measurements, please visit your nearest AVISHU location for consultation.",
+    "Payment Questions": "Payment is processed upon order confirmation. Corporate orders may be arranged through your franchisee representative.",
+    "Product Availability": "Current collection items are available for immediate purchase. Pre-order items have specified ready dates in the product details.",
+    "Delivery Timeline": "Delivery timelines depend on production schedule and location. Standard delivery is 7-10 business days for in-stock items.",
+    "Franchise Locations": "AVISHU operates through a franchise model. Please use our store locator or contact support for nearest location details.",
+    "Custom Orders": "Custom orders are available through select franchise locations. Please consult with your local AVISHU representative for options."
+  }
+
   useEffect(() => {
-    // Scroll to bottom when messages change
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true })
     }, 100)
   }, [messages])
 
-  const sendMessage = () => {
+  const getFallbackResponse = (message: string): string => {
+    const lowerMsg = message.toLowerCase()
+    if (lowerMsg.includes('order') || lowerMsg.includes('status')) {
+      return "Your order status can be viewed in the 'Profile · Orders' section. Orders move through Placed → In Production → Ready stages."
+    } else if (lowerMsg.includes('return')) {
+      return "Returns are handled by your local franchisee. Please visit them with your order confirmation within 14 days."
+    } else if (lowerMsg.includes('size')) {
+      return "Our structured fit runs true to size. For precise measurements, please visit your nearest AVISHU location."
+    } else if (lowerMsg.includes('payment') || lowerMsg.includes('pay')) {
+      return "Payment is processed upon order confirmation. We accept all major credit cards and UPI."
+    } else if (lowerMsg.includes('delivery') || lowerMsg.includes('shipping')) {
+      return "Standard delivery takes 5-7 business days. Express delivery available for additional fee."
+    }
+    return "Thank you for your message. A support representative will assist you shortly."
+  }
+
+  const sendMessage = async () => {
     if (!inputText.trim()) return
 
     const userMessage: Message = {
@@ -77,23 +94,45 @@ export function SupportTab() {
     setInputText('')
     setIsTyping(true)
 
-    // Simulate AI response
-    setTimeout(() => {
-      const randomResponse = aiResponses[Math.floor(Math.random() * aiResponses.length)]
+    try {
+      const response = await fetch(`${AI_API_URL}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: userMessage.text,
+          conversation_history: messages.map(m => ({ text: m.text, sender: m.sender }))
+        })
+      })
+
+      if (!response.ok) throw new Error('AI service unavailable')
+
+      const data = await response.json()
+      
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: randomResponse,
+        text: data.response,
         sender: 'ai',
         timestamp: new Date(),
         type: 'text'
       }
       
       setMessages(prev => [...prev, aiMessage])
+    } catch (error) {
+      const fallbackResponse = getFallbackResponse(userMessage.text)
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: fallbackResponse,
+        sender: 'ai',
+        timestamp: new Date(),
+        type: 'text'
+      }
+      setMessages(prev => [...prev, aiMessage])
+    } finally {
       setIsTyping(false)
-    }, 2000)
+    }
   }
 
-  const sendPreWrittenResponse = (response: string) => {
+  const sendPreWrittenResponse = async (response: string) => {
     const userMessage: Message = {
       id: Date.now().toString(),
       text: response,
@@ -103,39 +142,41 @@ export function SupportTab() {
     }
 
     setMessages(prev => [...prev, userMessage])
-    
-    // Find appropriate AI response based on the query type
-    let aiResponse = "Let me check that for you..."
-    
-    if (response.includes("Order Status")) {
-      aiResponse = "Your order status can be viewed in the 'Profile · Orders' section. Orders move through Placed → In Production → Ready stages."
-    } else if (response.includes("Return")) {
-      aiResponse = "Returns are handled by your local franchisee. Please visit them with your order confirmation within 14 days of receipt."
-    } else if (response.includes("Sizing")) {
-      aiResponse = "Our structured fit runs true to size. For precise measurements, please visit your nearest AVISHU location for consultation."
-    } else if (response.includes("Payment")) {
-      aiResponse = "Payment is processed upon order confirmation. Corporate orders may be arranged through your franchisee representative."
-    } else if (response.includes("Availability")) {
-      aiResponse = "Current collection items are available for immediate purchase. Pre-order items have specified ready dates in the product details."
-    } else if (response.includes("Delivery")) {
-      aiResponse = "Delivery timelines depend on production schedule and location. Standard delivery is 7-10 business days for in-stock items."
-    } else if (response.includes("Locations")) {
-      aiResponse = "AVISHU operates through a franchise model. Please use our store locator or contact support for nearest location details."
-    } else if (response.includes("Custom")) {
-      aiResponse = "Custom orders are available through select franchise locations. Please consult with your local AVISHU representative for options."
-    }
+    setIsTyping(true)
 
-    setTimeout(() => {
+    try {
+      const res = await fetch(`${AI_API_URL}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: response })
+      })
+
+      if (!res.ok) throw new Error('AI service unavailable')
+
+      const data = await res.json()
+      
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: aiResponse,
+        text: data.response,
         sender: 'ai',
         timestamp: new Date(),
         type: 'text'
       }
       
       setMessages(prev => [...prev, aiMessage])
-    }, 1500)
+    } catch (error) {
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: fallbackResponses[response] || "Thank you for your inquiry. How else can I help you?",
+        sender: 'ai',
+        timestamp: new Date(),
+        type: 'text'
+      }
+      
+      setMessages(prev => [...prev, aiMessage])
+    } finally {
+      setIsTyping(false)
+    }
   }
 
   const formatTime = (date: Date) => {
@@ -156,13 +197,11 @@ export function SupportTab() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>SUPPORT</Text>
         <Text style={styles.headerSubtitle}>AI Chat & Customer Service</Text>
       </View>
 
-      {/* Messages */}
       <ScrollView 
         ref={scrollViewRef}
         style={styles.messagesContainer}
@@ -213,7 +252,6 @@ export function SupportTab() {
         )}
       </ScrollView>
 
-      {/* Pre-written Responses */}
       <View style={styles.quickResponses}>
         <Text style={styles.quickResponsesTitle}>Quick Questions:</Text>
         <ScrollView 
@@ -234,7 +272,6 @@ export function SupportTab() {
         </ScrollView>
       </View>
 
-      {/* Input Area */}
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.inputContainer}

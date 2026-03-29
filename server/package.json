@@ -1,0 +1,9 @@
+{
+  "name": "avishu-ai-server",
+  "version": "1.0.0",
+  "description": "AI Support API for AVISHU Superapp",
+  "scripts": {
+    "start": "python ai_server.py",
+    "dev": "uvicorn ai_server:app --reload --host 0.0.0.0 --port 8000"
+  }
+}
