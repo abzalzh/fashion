@@ -1,6 +1,3 @@
-# AI Backend for AVISHU Support
-# This server loads the PyTorch models and exposes API endpoints for the mobile app
-
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -11,21 +8,17 @@ import os
 import json
 
 app = FastAPI(title="AVISHU AI Support API")
-
-# Enable CORS for React Native app
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure for production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Load AI models
 MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "AI")
 
 class SimpleChatModel(nn.Module):
-    """Simple neural network for chat responses"""
     def __init__(self, input_size=100, hidden_size=256, output_size=50):
         super(SimpleChatModel, self).__init__()
         self.fc1 = nn.Linear(input_size, hidden_size)
@@ -42,7 +35,6 @@ class SimpleChatModel(nn.Module):
         x = self.fc3(x)
         return x
 
-# Response templates mapped to model outputs
 RESPONSE_TEMPLATES = {
     "order_status": "Your order status can be viewed in the 'Profile · Orders' section. Orders move through Placed → In Production → Ready stages. Current production time is typically 3-5 business days.",
     "return_policy": "Returns are accepted within 14 days of delivery. Items must be unworn with original tags. Please visit your local AVISHU franchisee with your order confirmation for processing.",
@@ -57,7 +49,6 @@ RESPONSE_TEMPLATES = {
     "general": "Thank you for contacting AVISHU support. How may I assist you with your order or inquiry today?"
 }
 
-# Keyword mappings for intent classification
 INTENT_KEYWORDS = {
     "order_status": ["order", "status", "track", "where", "progress", "placed", "production", "ready"],
     "return_policy": ["return", "exchange", "refund", "policy", "back", "money"],
@@ -92,7 +83,6 @@ class FabricAnalysisResponse(BaseModel):
     description: str
 
 def classify_intent(message: str) -> tuple:
-    """Classify user intent based on keywords"""
     message_lower = message.lower()
     scores = {}
     
@@ -100,10 +90,9 @@ def classify_intent(message: str) -> tuple:
         score = sum(1 for keyword in keywords if keyword in message_lower)
         scores[intent] = score
     
-    # Get highest scoring intent
     if max(scores.values()) > 0:
         best_intent = max(scores, key=scores.get)
-        confidence = min(scores[best_intent] / 3, 1.0)  # Normalize confidence
+        confidence = min(scores[best_intent] / 3, 1.0)
         return best_intent, confidence
     
     return "general", 0.5
@@ -114,14 +103,11 @@ async def root():
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
-    """Process user message and return AI response"""
     try:
         intent, confidence = classify_intent(request.message)
         
-        # Get response based on intent
         response = RESPONSE_TEMPLATES.get(intent, RESPONSE_TEMPLATES["general"])
         
-        # Add personalized touch based on conversation
         if request.conversation_history and len(request.conversation_history) > 2:
             response += " Is there anything else I can help you with today?"
         
@@ -135,9 +121,6 @@ async def chat(request: ChatRequest):
 
 @app.post("/fabric/analyze", response_model=FabricAnalysisResponse)
 async def analyze_fabric(request: FabricAnalysisRequest):
-    """Analyze fabric type (placeholder for actual model inference)"""
-    # This would use the fabrics.pth model for actual classification
-    # For now, return mock data based on input
     
     fabric_types = {
         "cotton": {
@@ -166,7 +149,6 @@ async def analyze_fabric(request: FabricAnalysisRequest):
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
     return {"status": "healthy", "models_loaded": True}
 
 if __name__ == "__main__":

@@ -1,10 +1,6 @@
--- AVISHU Superapp MVP — Supabase / Postgres
--- Apply in Supabase SQL Editor on a fresh project, or reset and re-run for hackathon.
--- Order status values map to UI copy: PLACED → "Placed", IN_PRODUCTION → "In Production", READY → "Ready"
 
 create extension if not exists pgcrypto;
 
--- Roles (single app, role-based routing)
 do $$
 begin
   if exists (select 1 from pg_type where typname = 'user_role' and typnamespace = (select oid from pg_namespace where nspname = 'public')) then
@@ -23,7 +19,6 @@ begin
   end if;
 end $$;
 
--- Profiles (1:1 with auth.users)
 create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   email text not null,
@@ -35,7 +30,6 @@ create table if not exists public.profiles (
 
 create index if not exists profiles_role_idx on public.profiles (role);
 
--- Product catalog
 create table if not exists public.products (
   id uuid primary key default gen_random_uuid (),
   slug text not null unique,
@@ -43,13 +37,11 @@ create table if not exists public.products (
   description text,
   price_cents int not null check (price_cents >= 0),
   in_stock boolean not null default true,
-  -- PLACEHOLDER: set image_url to your CDN/path after you add assets
   image_url text,
   sort_order int not null default 0,
   created_at timestamptz not null default now ()
 );
 
--- Customer orders (single-product checkout for MVP)
 create table if not exists public.orders (
   id uuid primary key default gen_random_uuid (),
   customer_id uuid not null references public.profiles (id) on delete restrict,
@@ -67,7 +59,6 @@ create index if not exists orders_customer_idx on public.orders (customer_id);
 create index if not exists orders_status_idx on public.orders (status);
 create index if not exists orders_created_idx on public.orders (created_at desc);
 
--- Production pipeline: ordered steps; last completion moves order to READY
 create table if not exists public.production_tasks (
   id uuid primary key default gen_random_uuid (),
   order_id uuid not null references public.orders (id) on delete cascade,
@@ -96,7 +87,6 @@ before update on public.orders
 for each row
 execute function public.touch_updated_at ();
 
--- On signup: create profile (role from raw_user_meta_data.role, default customer)
 create or replace function public.handle_new_user ()
 returns trigger
 language plpgsql
@@ -115,7 +105,6 @@ begin
       when 'production' then 'production'::public.user_role
       else 'customer'::public.user_role
     end;
-  -- Get email from auth.users or raw_user_meta_data
   user_email := coalesce(new.email, new.raw_user_meta_data ->> 'email', '');
   
   insert into public.profiles (id, email, role)
@@ -134,7 +123,6 @@ after insert on auth.users
 for each row
 execute function public.handle_new_user ();
 
--- Accept order (franchisee): PLACED → IN_PRODUCTION + seed tasks
 create or replace function public.accept_order (p_order_id uuid)
 returns void
 language plpgsql
@@ -177,7 +165,6 @@ begin
 end;
 $$;
 
--- Complete current stage (production); final stage sets READY
 create or replace function public.complete_current_production_task (p_order_id uuid)
 returns void
 language plpgsql
@@ -249,7 +236,6 @@ alter table public.products enable row level security;
 alter table public.orders enable row level security;
 alter table public.production_tasks enable row level security;
 
--- Profiles
 drop policy if exists profiles_select_self on public.profiles;
 create policy profiles_select_self on public.profiles
 for select using (id = auth.uid ());
@@ -263,12 +249,10 @@ drop policy if exists profiles_insert_self on public.profiles;
 create policy profiles_insert_self on public.profiles
 for insert with check (id = auth.uid ());
 
--- Products: readable by any signed-in user; writes via service role / SQL only
 drop policy if exists products_select_auth on public.products;
 create policy products_select_auth on public.products
 for select using (auth.role () = 'authenticated');
 
--- Orders
 drop policy if exists orders_select_scope on public.orders;
 create policy orders_select_scope on public.orders
 for select using (
@@ -284,9 +268,7 @@ for insert with check (
   and exists (select 1 from public.profiles p where p.id = auth.uid () and p.role = 'customer')
 );
 
--- No direct UPDATE on orders from clients — transitions via RPC only
 
--- Production tasks
 drop policy if exists production_tasks_select_scope on public.production_tasks;
 create policy production_tasks_select_scope on public.production_tasks
 for select using (
@@ -303,7 +285,6 @@ for select using (
   )
 );
 
--- No direct INSERT/UPDATE/DELETE on production_tasks from clients
 
 alter publication supabase_realtime add table public.orders;
 alter publication supabase_realtime add table public.production_tasks;

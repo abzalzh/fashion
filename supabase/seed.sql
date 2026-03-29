@@ -1,6 +1,3 @@
--- Optional catalog seed (run after schema.sql)
--- PLACEHOLDER image_url: replace with your asset URLs when ready
-
 insert into public.products (slug, title, description, price_cents, in_stock, image_url, sort_order)
 values
   (

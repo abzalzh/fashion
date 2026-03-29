@@ -36,7 +36,6 @@ See `TempGuide.txt` for keys and troubleshooting.
 ```bash
 cd mobile-native
 cp .env.example .env
-# fill EXPO_PUBLIC_SUPABASE_URL + EXPO_PUBLIC_SUPABASE_ANON_KEY
 npm install
 npx expo start -c
 ```
@@ -57,7 +56,7 @@ The server will start on `http://localhost:8000`.
 
 **For mobile device testing**, update the API URL in `mobile-native/src/customer/SupportTab.tsx`:
 ```typescript
-const AI_API_URL = 'http://YOUR_COMPUTER_IP:8000'  // e.g., 'http://192.168.1.5:8000'
+const AI_API_URL = 'http://YOUR_COMPUTER_IP:8000'
 ```
 
 **API Endpoints:**
@@ -83,5 +82,5 @@ See `TempGuide.txt`. Open `android-native/` in Android Studio, set `SUPABASE_URL
 
 ## Notes
 
-- Image assets are intentionally **placeholders** until you set `products.image_url` or swap in bundled images (see comments in `mobile-native/src/customer/CustomerApp.tsx`).
+- Image assets are intentionally **placeholders** until you set `products.image_url` or swap in bundled images.
 - `TempGuide.txt` explains where to paste Supabase keys for each client.
