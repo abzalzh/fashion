@@ -1,50 +1,55 @@
-# AVISHU Superapp (Hackathon MVP)
+# AVISHU Superapp — Hackathon MVP
 
-This repository implements the **end-to-end order workflow** for the AVISHU franchise superapp:
+Репозиторий с рабочим прототипом суперприложения для франшизы AVISHU. Реализован сквозной сценарий обработки заказа между тремя ролями.
 
-1. **Customer** places an order (buy in-stock or pre-order with a ready date).
-2. **Franchisee** sees it in near real time and **accepts** it (`PLACED` → `IN_PRODUCTION`).
-3. **Production** completes **CUT → SEW → FINISH**; after the last stage the order becomes **`READY`**.
-4. **Customer** timeline updates to **Ready** (Supabase realtime on the Expo client; Kotlin client polls).
+## Как это работает
 
-## Clients in this repo
+1. **Покупатель** оформляет заказ — товар из наличия или предзаказ с датой готовности.
+2. **Франчайзи** видит заказ почти мгновенно и принимает его в работу (`PLACED` → `IN_PRODUCTION`).
+3. **Производство** последовательно закрывает три этапа: **РАСКРОЙ → ПОШИВ → ФИНИШНАЯ ОБРАБОТКА** — после последнего статус становится **`READY`**.
+4. **Покупатель** видит обновление без перезагрузки — через Supabase Realtime на Expo-клиенте; Kotlin-клиент подтягивает статус поллингом.
 
-- **`mobile-native/`**: Expo + React Native + TypeScript (primary demo; Supabase Realtime).
-- **`android-native/`**: Kotlin + Jetpack Compose + Hilt + Retrofit (Android Studio).
+## Клиенты
 
-## Supabase
+- **`mobile-native/`** — Expo + React Native + TypeScript. Основной клиент для демо, работает с Supabase Realtime.
+- **`android-native/`** — Kotlin + Jetpack Compose + Hilt + Retrofit. Открывается в Android Studio.
 
-- **Schema**: `supabase/schema.sql` (strict RLS + RPC transitions).
-- **Seed catalog (optional)**: `supabase/seed.sql`.
+## База данных (Supabase)
 
-### Collections
+Схема лежит в `supabase/schema.sql` — там же настроены RLS-политики и RPC-функции для смены статусов. Опциональный сид каталога — `supabase/seed.sql`.
 
-- **`profiles`**: `id` (auth user), `email`, `role` (`customer | franchisee | production`).
-- **`products`**: catalog (including `in_stock` flag + optional `image_url`).
-- **`orders`**: one line item per checkout in MVP (`customer_id`, `product_id`, `status`, preorder fields, timestamps).
-- **`production_tasks`**: ordered steps per order; created when a franchisee acknowledges the order.
+### Таблицы
 
-### Security model (high level)
+| Таблица | Что хранит |
+|---|---|
+| `profiles` | Пользователь + его роль: `customer`, `franchisee`, `production` |
+| `products` | Каталог товаров: флаг `in_stock`, опциональный `image_url` |
+| `orders` | Один заказ = одна строка (в рамках MVP). Содержит `customer_id`, `product_id`, `status`, поля предзаказа и временные метки |
+| `production_tasks` | Этапы производства по каждому заказу — создаются в момент, когда франчайзи принимает заказ |
 
-- Clients **cannot** freely `UPDATE` orders to cheat statuses — changes go through `accept_order` and `complete_current_production_task`.
-- Inserts into `orders` are limited to **customers** creating rows for themselves.
+### Про безопасность
 
-## Run (Expo)
+Клиенты не могут напрямую менять статус заказа в таблице — только через RPC-функции `accept_order` и `complete_current_production_task`. Вставлять заказы в `orders` могут только покупатели, и только за себя.
 
-See `TempGuide.txt` for keys and troubleshooting.
+## Запуск
+
+### Expo (React Native)
+
+Ключи и нюансы — в `TempGuide.txt`.
 
 ```bash
 cd mobile-native
 cp .env.example .env
+# вписать EXPO_PUBLIC_SUPABASE_URL и EXPO_PUBLIC_SUPABASE_ANON_KEY
 npm install
 npx expo start -c
 ```
 
-## Run AI Support Server (Optional)
+### AI-сервер поддержки (опционально)
 
-The AI chat feature requires a Python backend server. The server uses PyTorch models from the `AI/` folder for intelligent responses.
+Чат с поддержкой работает через отдельный Python-бэкенд. Сервер использует PyTorch-модели из папки `AI/`.
 
-**Prerequisites:** Python 3.8+ with pip
+**Нужен Python 3.8+ с pip.**
 
 ```bash
 cd server
@@ -52,35 +57,35 @@ pip install -r requirements.txt
 python ai_server.py
 ```
 
-The server will start on `http://localhost:8000`.
+Сервер поднимается на `http://localhost:8000`.
 
-**For mobile device testing**, update the API URL in `mobile-native/src/customer/SupportTab.tsx`:
+При тестировании на реальном устройстве нужно вписать IP компьютера в `mobile-native/src/customer/SupportTab.tsx`:
+
 ```typescript
-const AI_API_URL = 'http://YOUR_COMPUTER_IP:8000'
+const AI_API_URL = 'http://IP_ВАШЕГО_КОМПЬЮТЕРА:8000'  // например, 'http://192.168.1.5:8000'
 ```
 
-**API Endpoints:**
-- `POST /chat` - AI support chat with intent classification
-- `POST /fabric/analyze` - Fabric analysis (uses trained models)
-- `GET /health` - Server health check
+Доступные эндпоинты:
+- `POST /chat` — чат поддержки с классификацией намерений
+- `POST /fabric/analyze` — анализ ткани через обученные модели
+- `GET /health` — проверка состояния сервера
 
-**Note:** If the AI server is not running, the Support tab will fall back to local response templates.
+Если сервер не запущен — вкладка поддержки автоматически переключается на локальные шаблоны ответов.
 
-## Run (Android Studio / Kotlin)
+### Android Studio (Kotlin)
 
-See `TempGuide.txt`. Open `android-native/` in Android Studio, set `SUPABASE_URL` + `SUPABASE_ANON_KEY` in `local.properties`, then Run.
+Открыть папку `android-native/`, прописать `SUPABASE_URL` и `SUPABASE_ANON_KEY` в `local.properties`, запустить через Run.
 
-## Presentation test script (E2E)
+## Сценарий демо (E2E)
 
-1. Seed products (optional): run `supabase/seed.sql`.
-2. Register three accounts (metadata role picker in Expo; same in Kotlin):
-   - `customer`, `franchisee`, `production`
-3. Customer: buy an in-stock item → order appears as **Placed**.
-4. Franchisee: accept → **In Production** + tasks appear.
-5. Production: tap **Complete stage** three times → **Ready**.
-6. Customer: timeline reaches **Ready** without manual reload (Expo realtime).
+1. Залить тестовый каталог: выполнить `supabase/seed.sql` (опционально).
+2. Зарегистрировать три аккаунта с разными ролями — в Expo это делается прямо при регистрации через пикер роли.
+3. Под **покупателем**: купить товар из наличия → заказ в статусе **Placed**.
+4. Под **франчайзи**: принять заказ → статус меняется на **In Production**, в таблице `production_tasks` появляются этапы.
+5. Под **производством**: три раза нажать **«Этап выполнен»** → статус становится **Ready**.
+6. Вернуться к **покупателю**: таймлайн обновился сам, без перезагрузки.
 
-## Notes
+## Мелкие детали
 
-- Image assets are intentionally **placeholders** until you set `products.image_url` or swap in bundled images.
-- `TempGuide.txt` explains where to paste Supabase keys for each client.
+- Изображения товаров — заглушки. Как подключить свои: либо прописать `image_url` в таблице `products`, либо заменить бандл локально — комментарии есть прямо в `mobile-native/src/customer/CustomerApp.tsx`.
+- Все ключи Supabase и инструкции по troubleshooting — в `TempGuide.txt`.
