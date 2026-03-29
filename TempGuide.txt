@@ -1,0 +1,57 @@
+AVISHU — LOCAL SETUP (SUPABASE + ANDROID NATIVE)
+================================================
+
+1) Supabase (database + auth)
+- Create a Supabase project (free tier is enough for the hackathon demo).
+- Authentication → Providers → Email: enable it.
+- For hackathon speed, consider disabling “Confirm email” so `signUp` returns a session immediately.
+
+2) Apply SQL
+- Open Supabase → SQL Editor.
+- Paste and run `supabase/schema.sql`.
+- If this is not a fresh project and you previously ran the older hackathon schema, drop conflicting tables/types first or use a new Supabase project.
+- Optionally run `supabase/seed.sql` to insert the demo catalog.
+
+3) Realtime
+- `schema.sql` tries to add `orders` + `production_tasks` to `supabase_realtime`.
+- If a table is already in the publication, that statement may error — you can ignore it if Realtime is already enabled for those tables.
+
+4) Expo / React Native (`mobile-native`)
+- There are no built-in “ready” passwords in git. Accounts always come from Supabase Auth.
+  Optional fixed demo users (fastest for judging):
+  - Dashboard → Authentication → Users → Add user (set email + password three times).
+  - Table Editor → `public.profiles` or SQL: set `role` to `customer` / `franchisee` / `production`
+    to match each email (the signup trigger sets role from metadata only for self-registration).
+- Copy `mobile-native/.env.example` to `mobile-native/.env`.
+- Fill in (no quotes, no spaces around `=`):
+  - `EXPO_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co`
+  - `EXPO_PUBLIC_SUPABASE_ANON_KEY=YOUR_ANON_KEY`
+- URL must be exactly `https://<project-ref>.supabase.co` (no trailing slash).
+- Restart Metro with cache clear: `npx expo start -c`
+- Demo flow typically uses:
+  - Register/login as **customer** on phone A
+  - Register/login as **franchisee** on phone B
+  - Register/login as **production** on a tablet/emulator (or Expo on a third device)
+
+5) Kotlin / Android Studio (`android-native`)
+- Open the `android-native` folder in Android Studio.
+- Create `android-native/local.properties` (Android Studio usually generates this automatically) and add:
+  - `sdk.dir=...`  (path to your Android SDK)
+- Add these two lines to `android-native/local.properties` for this repo:
+  - `SUPABASE_URL=https://YOUR_PROJECT.supabase.co`
+  - `SUPABASE_ANON_KEY=YOUR_ANON_KEY`
+- Sync Gradle, then Run on an emulator or device (API 26+).
+
+5b) “TypeError: Network request failed” (sign-in / sign-up)
+- Usually NOT “wrong password” — the phone/emulator cannot reach Supabase over HTTPS.
+- Checklist:
+  - Confirm `.env` is in `mobile-native/` (not repo root) and Metro was restarted with `npx expo start -c`.
+  - On the **same device**, open Chrome and visit your `EXPO_PUBLIC_SUPABASE_URL` — you should see a small JSON/health response, not a timeout.
+  - Disable VPN / try another network; some corporate Wi‑Fi blocks unknown HTTPS endpoints.
+  - If the Supabase project is **paused** (free tier), wake it in the dashboard — paused projects often look like network failures from the app.
+  - Android emulator: ensure the emulator has internet (browser test). Physical device + PC: phone and PC don’t need the same LAN for Supabase (it’s public HTTPS).
+
+6) GitHub safety
+- Never commit real secrets:
+  - Keep `.env` and `local.properties` local.
+  - Use Supabase anon key only (not service role) in client apps.

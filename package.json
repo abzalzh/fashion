@@ -1,0 +1,16 @@
+{
+  "name": "fashion-app",
+  "version": "1.0.0",
+  "description": "Fashion app with mobile-native and server components",
+  "scripts": {
+    "install-all": "npm run install-mobile && npm run install-server",
+    "install-mobile": "cd mobile-native && npm install",
+    "install-server": "cd server && npm install",
+    "start-mobile": "cd mobile-native && npm start",
+    "start-server": "cd server && npm start",
+    "start": "npm run start-mobile & npm run start-server"
+  },
+  "keywords": ["fashion", "mobile", "server", "react-native"],
+  "author": "",
+  "license": "ISC"
+}
